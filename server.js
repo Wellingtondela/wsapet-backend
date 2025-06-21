@@ -1,6 +1,9 @@
-import express from "express";
-import cors from "cors";
-import { db } from "./firebase/admin.js"; // importa o Firestore já inicializado
+// server.js
+import express from 'express';
+import cors from 'cors';
+import multer from 'multer';
+import { v4 as uuidv4 } from 'uuid';
+import { db, storage } from './firebase/admin.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -8,41 +11,39 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Rota raiz só para teste
-app.get("/", (req, res) => {
-  res.send("API WSAPet backend funcionando!");
-});
+// Configurar o multer para lidar com uploads de imagem/vídeo
+const upload = multer({ storage: multer.memoryStorage() });
 
-// Rota para listar posts do Firestore
-app.get("/posts", async (req, res) => {
+// Rota para salvar post com texto e mídia (imagem/vídeo)
+app.post('/salvar-post', upload.single('media'), async (req, res) => {
   try {
-    const snapshot = await db.collection("posts").orderBy("timestamp", "desc").get();
-    const posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    res.json(posts);
-  } catch (error) {
-    console.error("Erro ao buscar posts:", error);
-    res.status(500).json({ error: "Erro ao buscar posts" });
-  }
-});
+    const { texto, userId } = req.body;
+    const file = req.file;
+    let mediaUrl = null;
 
-// Rota para criar um post (exemplo simples)
-app.post("/posts", async (req, res) => {
-  try {
-    const { userId, texto, mediaUrl, mediaType } = req.body;
-    if (!userId) return res.status(400).json({ error: "userId é obrigatório" });
+    // Upload para o Firebase Storage se houver mídia
+    if (file) {
+      const filename = `${uuidv4()}-${file.originalname}`;
+      const fileRef = storage.bucket().file(`posts/${filename}`);
+      await fileRef.save(file.buffer, {
+        metadata: { contentType: file.mimetype },
+        public: true
+      });
+      mediaUrl = `https://storage.googleapis.com/${fileRef.bucket.name}/${fileRef.name}`;
+    }
 
-    const docRef = await db.collection("posts").add({
+    // Salvar o post no Firestore
+    const docRef = await db.collection('posts').add({
+      texto,
       userId,
-      texto: texto || "",
-      mediaUrl: mediaUrl || "",
-      mediaType: mediaType || "",
-      timestamp: new Date()
+      mediaUrl,
+      criadoEm: new Date()
     });
 
-    res.status(201).json({ id: docRef.id, message: "Post criado com sucesso" });
+    res.status(200).json({ id: docRef.id, mensagem: 'Post salvo com sucesso!' });
   } catch (error) {
-    console.error("Erro ao criar post:", error);
-    res.status(500).json({ error: "Erro ao criar post" });
+    console.error('Erro ao salvar post:', error);
+    res.status(500).json({ erro: 'Erro ao salvar post.' });
   }
 });
 
