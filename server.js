@@ -49,14 +49,37 @@ app.post('/salvar-post', upload.single('media'), async (req, res) => {
 // ✅ NOVA ROTA PARA PEGAR POSTS
 app.get('/posts', async (req, res) => {
   try {
-    const snapshot = await db.collection('posts').orderBy('criadoEm', 'desc').get();
-    const posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    res.json(posts);
+    const postsSnapshot = await db.collection('posts').orderBy('criadoEm', 'desc').get();
+    const postsData = [];
+
+    for (const doc of postsSnapshot.docs) {
+      const post = doc.data();
+      const userId = post.userId;
+
+      // Buscar dados do usuário
+      const userDoc = await db.collection('users').doc(userId).get();
+      const userData = userDoc.exists ? userDoc.data() : { nome: 'Usuário desconhecido', avatarUrl: 'default-avatar.png' };
+
+      postsData.push({
+        id: doc.id,
+        texto: post.texto,
+        mediaUrl: post.mediaUrl,
+        criadoEm: post.criadoEm,
+        user: {
+          nome: userData.nome || userData.displayName || 'Usuário',
+          avatarUrl: userData.avatarUrl || 'default-avatar.png'
+        }
+      });
+    }
+
+    res.json(postsData);
+
   } catch (error) {
     console.error('Erro ao buscar posts:', error);
     res.status(500).json({ error: 'Erro ao buscar posts' });
   }
 });
+
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
