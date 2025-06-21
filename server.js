@@ -12,6 +12,14 @@ app.use(express.json());
 
 app.use("/api/perfil", perfilRoutes);
 app.use("/api/agendamentos", agendamentoRoutes);
+app.get("/teste-env", (req, res) => {
+  try {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    res.json({ ok: true, projectId: serviceAccount.project_id });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
 
 app.get("/", (req, res) => {
   res.send("Servidor WSA Pet rodando!");
