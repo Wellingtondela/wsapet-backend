@@ -47,16 +47,17 @@ app.post('/salvar-post', upload.single('media'), async (req, res) => {
   }
 });
 // ✅ NOVA ROTA PARA PEGAR POSTS
-app.get("/posts", async (req, res) => {
+app.get('/posts', async (req, res) => {
   try {
-    const snapshot = await db.collection("posts").orderBy("createdAt", "desc").get();
+    const snapshot = await db.collection('posts').orderBy('criadoEm', 'desc').get();
     const posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     res.json(posts);
   } catch (error) {
-    console.error("Erro ao buscar posts:", error);
-    res.status(500).json({ erro: "Erro ao buscar posts" });
+    console.error('Erro ao buscar posts:', error);
+    res.status(500).json({ error: 'Erro ao buscar posts' });
   }
 });
+
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
