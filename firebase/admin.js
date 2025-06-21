@@ -9,7 +9,7 @@ serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, "\n");
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  storageBucket: "wsapet-ff5fb.appspot.com",  // ADICIONE ISSO
+  storageBucket: "wsapet-ff5fb.firebasestorage.app",  // ADICIONE ISSO
   databaseURL: "https://wsapet-ff5fb.firebaseio.com"
 });
 
