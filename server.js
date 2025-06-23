@@ -126,13 +126,40 @@ app.delete('/excluir-post/:id', async (req, res) => {
   const postId = req.params.id;
 
   try {
-    await db.collection('posts').doc(postId).delete();
-    res.json({ mensagem: 'Post excluído com sucesso' });
+    // Buscar o documento para pegar a mediaUrl
+    const postRef = db.collection('posts').doc(postId);
+    const postDoc = await postRef.get();
+
+    if (!postDoc.exists) {
+      return res.status(404).json({ erro: 'Post não encontrado' });
+    }
+
+    const postData = postDoc.data();
+    const mediaUrl = postData.mediaUrl;
+
+    // Se houver uma mídia, excluir do Storage
+    if (mediaUrl) {
+      try {
+        // Extrair o caminho do arquivo a partir da URL
+        const storagePath = decodeURIComponent(new URL(mediaUrl).pathname.replace(/^\/[^\/]+\/o\//, '').split('?')[0]).replace(/%2F/g, '/');
+
+        await storage.bucket().file(storagePath).delete();
+        console.log('Mídia excluída do Storage:', storagePath);
+      } catch (err) {
+        console.warn('Erro ao excluir mídia do Storage (pode não existir):', err.message);
+      }
+    }
+
+    // Excluir o post do Firestore
+    await postRef.delete();
+
+    res.json({ mensagem: 'Post e mídia excluídos com sucesso' });
   } catch (error) {
-    console.error("Erro ao excluir post:", error);
-    res.status(500).json({ erro: 'Erro ao excluir post' });
+    console.error('Erro ao excluir post e/ou mídia:', error);
+    res.status(500).json({ erro: 'Erro ao excluir post e/ou mídia' });
   }
 });
+
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
