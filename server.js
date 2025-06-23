@@ -48,13 +48,22 @@ app.post('/salvar-post', upload.single('media'), async (req, res) => {
 });
 // ✅ NOVA ROTA PARA PEGAR POSTS
 app.get('/posts', async (req, res) => {
+  const userId = req.query.uid;
+
+  if (!userId) {
+    return res.status(400).json({ error: 'ID do usuário não informado.' });
+  }
+
   try {
-    const postsSnapshot = await db.collection('posts').orderBy('criadoEm', 'desc').get();
+    const postsSnapshot = await db.collection('posts')
+      .where('userId', '==', userId)
+      .orderBy('criadoEm', 'desc')
+      .get();
+
     const postsData = [];
 
     for (const doc of postsSnapshot.docs) {
       const post = doc.data();
-      const userId = post.userId;
 
       // Buscar dados do usuário
       const userDoc = await db.collection('users').doc(userId).get();
@@ -75,10 +84,11 @@ app.get('/posts', async (req, res) => {
     res.json(postsData);
 
   } catch (error) {
-    console.error('Erro ao buscar posts:', error);
-    res.status(500).json({ error: 'Erro ao buscar posts' });
+    console.error('Erro ao buscar posts do usuário:', error);
+    res.status(500).json({ error: 'Erro ao buscar posts do usuário' });
   }
 });
+
 
 
 app.listen(PORT, () => {
