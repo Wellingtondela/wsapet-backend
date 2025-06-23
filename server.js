@@ -77,11 +77,13 @@ app.get('/posts', async (req, res) => {
         texto: post.texto,
         mediaUrl: post.mediaUrl,
         criadoEm: post.criadoEm,
+        userId: post.userId, // 👈 ESSENCIAL para o frontend saber de quem é o post
         user: {
           nome: userData.nome || userData.displayName || 'Usuário',
           avatarUrl: userData.avatarUrl || 'default-avatar.png'
         }
       });
+
     }
 
     res.json(postsData);
