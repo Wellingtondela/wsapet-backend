@@ -20,15 +20,19 @@ app.post('/salvar-post', upload.single('media'), async (req, res) => {
     const { texto, userId } = req.body;
     const file = req.file;
     let mediaUrl = null;
+    let storagePath = null;
 
     // Upload para o Firebase Storage se houver mídia
     if (file) {
       const filename = `${uuidv4()}-${file.originalname}`;
-      const fileRef = storage.bucket().file(`posts/${filename}`);
+      storagePath = `posts/${filename}`; // Caminho interno do Storage
+      const fileRef = storage.bucket().file(storagePath);
+
       await fileRef.save(file.buffer, {
         metadata: { contentType: file.mimetype },
         public: true
       });
+
       mediaUrl = `https://storage.googleapis.com/${fileRef.bucket.name}/${fileRef.name}`;
     }
 
@@ -37,15 +41,23 @@ app.post('/salvar-post', upload.single('media'), async (req, res) => {
       texto,
       userId,
       mediaUrl,
+      storagePath,
       criadoEm: new Date()
     });
 
-    res.status(200).json({ id: docRef.id, mensagem: 'Post salvo com sucesso!' });
+    res.status(200).json({
+      id: docRef.id,
+      mensagem: 'Post salvo com sucesso!',
+      mediaUrl,
+      storagePath
+    });
+
   } catch (error) {
     console.error('Erro ao salvar post:', error);
     res.status(500).json({ erro: 'Erro ao salvar post.' });
   }
 });
+
 // ✅ NOVA ROTA PARA PEGAR POSTS
 app.get('/posts', async (req, res) => {
   try {
@@ -126,39 +138,52 @@ app.delete('/excluir-post/:id', async (req, res) => {
   const postId = req.params.id;
 
   try {
-    // Buscar o documento para pegar a mediaUrl
     const postRef = db.collection('posts').doc(postId);
     const postDoc = await postRef.get();
 
     if (!postDoc.exists) {
-      return res.status(404).json({ erro: 'Post não encontrado' });
+      return res.status(404).json({ erro: 'Post não encontrado', postId });
     }
 
     const postData = postDoc.data();
+    const storagePath = postData.storagePath;
     const mediaUrl = postData.mediaUrl;
+    let mediaStatus = 'Nenhuma mídia para excluir';
 
-    // Se houver uma mídia, excluir do Storage
-    if (mediaUrl) {
+    // Excluir do Firebase Storage se houver storagePath
+    if (storagePath) {
       try {
-        // Extrair o caminho do arquivo a partir da URL
-        const storagePath = decodeURIComponent(new URL(mediaUrl).pathname.replace(/^\/[^\/]+\/o\//, '').split('?')[0]).replace(/%2F/g, '/');
-
         await storage.bucket().file(storagePath).delete();
-        console.log('Mídia excluída do Storage:', storagePath);
+        mediaStatus = `Mídia excluída com sucesso: ${storagePath}`;
+        console.log(mediaStatus);
       } catch (err) {
-        console.warn('Erro ao excluir mídia do Storage (pode não existir):', err.message);
+        mediaStatus = `Erro ao excluir mídia: ${err.message}`;
+        console.warn(mediaStatus);
       }
     }
 
     // Excluir o post do Firestore
     await postRef.delete();
+    console.log(`Post ${postId} excluído do Firestore.`);
 
-    res.json({ mensagem: 'Post e mídia excluídos com sucesso' });
+    res.json({
+      mensagem: 'Post excluído com sucesso',
+      postId,
+      mediaUrl,
+      storagePath,
+      mediaStatus
+    });
+
   } catch (error) {
     console.error('Erro ao excluir post e/ou mídia:', error);
-    res.status(500).json({ erro: 'Erro ao excluir post e/ou mídia' });
+    res.status(500).json({
+      erro: 'Erro ao excluir post e/ou mídia',
+      postId,
+      detalhes: error.message
+    });
   }
 });
+
 
 
 app.listen(PORT, () => {
