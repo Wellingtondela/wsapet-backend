@@ -122,6 +122,18 @@ app.get('/meus-posts', async (req, res) => {
   }
 });
 
+app.delete('/excluir-post/:id', async (req, res) => {
+  const postId = req.params.id;
+
+  try {
+    await db.collection('posts').doc(postId).delete();
+    res.json({ mensagem: 'Post excluído com sucesso' });
+  } catch (error) {
+    console.error("Erro ao excluir post:", error);
+    res.status(500).json({ erro: 'Erro ao excluir post' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
