@@ -241,6 +241,62 @@ app.get('/posts/:postId/likes', async (req, res) => {
   }
 });
 
+// 📩 Comentar em um post
+app.post('/comentar', async (req, res) => {
+  const { postId, userId, texto } = req.body;
+
+  if (!postId || !userId || !texto) {
+    return res.status(400).json({ erro: 'Dados incompletos' });
+  }
+
+  try {
+    const comentario = {
+      postId,
+      userId,
+      texto,
+      criadoEm: new Date()
+    };
+
+    await db.collection('comentarios').add(comentario);
+    res.status(200).json({ mensagem: 'Comentário enviado com sucesso' });
+  } catch (error) {
+    console.error('Erro ao comentar:', error);
+    res.status(500).json({ erro: 'Erro ao comentar' });
+  }
+});
+
+// 📥 Buscar comentários de um post
+app.get('/comentarios/:postId', async (req, res) => {
+  const { postId } = req.params;
+
+  try {
+    const snapshot = await db.collection('comentarios')
+      .where('postId', '==', postId)
+      .orderBy('criadoEm', 'asc')
+      .get();
+
+    const comentarios = [];
+
+    for (const doc of snapshot.docs) {
+      const data = doc.data();
+      const userDoc = await db.collection('users').doc(data.userId).get();
+      const user = userDoc.exists ? userDoc.data() : {};
+      comentarios.push({
+        texto: data.texto,
+        criadoEm: data.criadoEm,
+        user: {
+          nome: user.nome || 'Anônimo',
+          avatarUrl: user.avatarUrl || 'https://cdn-icons-png.flaticon.com/512/616/616408.png'
+        }
+      });
+    }
+
+    res.json(comentarios);
+  } catch (error) {
+    console.error('Erro ao buscar comentários:', error);
+    res.status(500).json({ erro: 'Erro ao buscar comentários' });
+  }
+});
 
 
 app.listen(PORT, () => {
