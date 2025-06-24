@@ -186,6 +186,46 @@ app.delete('/excluir-post/:id', async (req, res) => {
   }
 });
 
+// CURTIR ou DESCURTIR
+app.post('/curtir-post', async (req, res) => {
+  const { postId, userId } = req.body;
+
+  if (!postId || !userId) {
+    return res.status(400).json({ erro: 'postId e userId são obrigatórios' });
+  }
+
+  const likeRef = db.collection('posts').doc(postId).collection('likes').doc(userId);
+
+  try {
+    const doc = await likeRef.get();
+
+    if (doc.exists) {
+      // Já curtiu? Então descurte (remove)
+      await likeRef.delete();
+      res.json({ status: 'descurtido' });
+    } else {
+      // Ainda não curtiu? Então curte
+      await likeRef.set({ curtidoEm: new Date() });
+      res.json({ status: 'curtido' });
+    }
+  } catch (error) {
+    console.error("Erro ao curtir/descurtir:", error);
+    res.status(500).json({ erro: 'Erro ao curtir/descurtir' });
+  }
+});
+
+// OBTER QUANTAS CURTIDAS UM POST TEM
+app.get('/curtidas/:postId', async (req, res) => {
+  const postId = req.params.postId;
+
+  try {
+    const snapshot = await db.collection('posts').doc(postId).collection('likes').get();
+    res.json({ total: snapshot.size });
+  } catch (error) {
+    console.error("Erro ao buscar curtidas:", error);
+    res.status(500).json({ erro: 'Erro ao buscar curtidas' });
+  }
+});
 
 
 app.listen(PORT, () => {
