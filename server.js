@@ -227,6 +227,21 @@ app.get('/curtidas/:postId', async (req, res) => {
   }
 });
 
+// Retorna todos os userIds que curtiram um post
+app.get('/posts/:postId/likes', async (req, res) => {
+  const postId = req.params.postId;
+
+  try {
+    const snapshot = await db.collection('posts').doc(postId).collection('likes').get();
+    const userIds = snapshot.docs.map(doc => doc.id);
+    res.json(userIds);
+  } catch (error) {
+    console.error("Erro ao buscar likes do post:", error);
+    res.status(500).json({ erro: 'Erro ao buscar likes do post' });
+  }
+});
+
+
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
