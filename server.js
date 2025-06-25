@@ -14,6 +14,28 @@ app.use(express.json());
 // Configurar o multer para lidar com uploads de imagem/vídeo
 const upload = multer({ storage: multer.memoryStorage() });
 
+app.get('/usuario/:uid', async (req, res) => {
+  const uid = req.params.uid;
+
+  try {
+    const userDoc = await db.collection('users').doc(uid).get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ erro: 'Usuário não encontrado.' });
+    }
+
+    const userData = userDoc.data();
+    res.json({
+      uid,
+      nome: userData.nome || userData.displayName || 'Usuário',
+      avatarUrl: userData.avatarUrl || 'https://cdn-icons-png.flaticon.com/512/847/847969.png'
+    });
+  } catch (error) {
+    console.error('Erro ao buscar usuário:', error);
+    res.status(500).json({ erro: 'Erro interno ao buscar usuário' });
+  }
+});
+
 // Rota para salvar post com texto e mídia (imagem/vídeo)
 app.post('/salvar-post', upload.single('media'), async (req, res) => {
   try {
