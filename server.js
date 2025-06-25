@@ -298,6 +298,17 @@ app.get('/comentarios/:postId', async (req, res) => {
   }
 });
 
+app.delete("/excluir-comentario/:id", async (req, res) => {
+  const comentarioId = req.params.id;
+
+  try {
+    await db.collection("comentarios").doc(comentarioId).delete();
+    res.json({ mensagem: "Comentário excluído com sucesso!" });
+  } catch (error) {
+    console.error("Erro ao excluir comentário:", error);
+    res.status(500).json({ erro: "Erro ao excluir comentário." });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
